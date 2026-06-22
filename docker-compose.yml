@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgis/postgis:17-3.5-alpine
+    environment: { POSTGRES_USER: nearby, POSTGRES_PASSWORD: nearby, POSTGRES_DB: nearby_connect }
+    ports: ["55432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U nearby -d nearby_connect"], interval: 5s, timeout: 5s, retries: 12 }
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "nearby-local-redis"]
+    ports: ["56379:6379"]
+    volumes: ["redis_data:/data"]
+    healthcheck: { test: ["CMD", "redis-cli", "-a", "nearby-local-redis", "ping"], interval: 5s, timeout: 3s, retries: 12 }
+  localstack:
+    image: localstack/localstack:4.6
+    environment: { SERVICES: s3, AWS_DEFAULT_REGION: us-west-2 }
+    ports: ["4566:4566"]
+    volumes: ["./infra/localstack/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh:ro", "localstack_data:/var/lib/localstack"]
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://nearby:nearby@postgres:5432/nearby_connect?schema=public
+      REDIS_URL: redis://:nearby-local-redis@redis:6379
+      S3_ENDPOINT: http://localstack:4566
+      S3_BUCKET: touchme-media
+      S3_PRESIGN_ENDPOINT: http://localhost:4566
+      S3_PUBLIC_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-local-access-secret-local-access-secret-local-access-secret-local-access-secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-local-refresh-secret-local-refresh-secret-local-refresh-secret-local-refresh-secret}
+      APP_ORIGINS: http://localhost:3001,http://localhost:8080
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@touchme.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-1212}
+      SEED_DEMO_EMAIL: ${SEED_DEMO_EMAIL:-demo@touchme.local}
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-demo12121212!}
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy }, localstack: { condition: service_started } }
+    ports: ["3000:3000"]
+  admin:
+    build: { context: ., dockerfile: apps/admin/Dockerfile }
+    environment: { API_INTERNAL_URL: http://api:3000/api/v1, NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1 }
+    depends_on: [api]
+    ports: ["3001:3001"]
+  nginx:
+    image: nginx:1.29-alpine
+    volumes: ["./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro"]
+    depends_on: [api, admin]
+    ports: ["8080:80"]
+volumes: { postgres_data: {}, redis_data: {}, localstack_data: {} }

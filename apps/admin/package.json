@@ -1,0 +1,9 @@
+{
+  "name": "@touchme/admin",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "dev": "next dev -p 3001", "build": "next build", "start": "next start -p 3001", "lint": "eslint ." },
+  "dependencies": { "@tailwindcss/postcss": "^4.1.11", "next": "^16.2.9", "react": "^19.1.0", "react-dom": "^19.1.0", "tailwindcss": "^4.1.11" },
+  "devDependencies": { "@types/node": "^24.0.0", "@types/react": "^19.1.8", "@types/react-dom": "^19.1.6", "eslint": "^9.30.0", "eslint-config-next": "^16.2.9", "typescript": "^5.8.3" }
+}
+

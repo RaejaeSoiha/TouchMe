@@ -1,0 +1,6 @@
+@import "tailwindcss";
+:root { color-scheme: light; --ink: #17202a; --brand: #e84a72; --paper: #fffaf8; }
+body { background: var(--paper); color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
+button, a { transition: opacity 150ms ease, transform 150ms ease; }
+button:hover, a:hover { opacity: .86; }
+

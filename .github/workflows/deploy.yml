@@ -1,0 +1,41 @@
+name: Deploy production
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+permissions: { contents: read, id-token: write }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: "${{ vars.AWS_DEPLOY_ROLE_ARN }}", aws-region: "${{ vars.AWS_REGION }}" }
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push images
+        env: { API_REPOSITORY: "${{ vars.API_ECR_REPOSITORY }}", ADMIN_REPOSITORY: "${{ vars.ADMIN_ECR_REPOSITORY }}" }
+        run: |
+          docker build -f apps/api/Dockerfile -t "$API_REPOSITORY:${GITHUB_SHA}" .
+          docker build -f apps/admin/Dockerfile -t "$ADMIN_REPOSITORY:${GITHUB_SHA}" .
+          docker push "$API_REPOSITORY:${GITHUB_SHA}"
+          docker push "$ADMIN_REPOSITORY:${GITHUB_SHA}"
+      - name: Register API task revision
+        env: { CLUSTER: "${{ vars.ECS_CLUSTER }}", SERVICE: api, IMAGE: "${{ vars.API_ECR_REPOSITORY }}:${{ github.sha }}" }
+        run: |
+          TASK_ARN=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" --query 'services[0].taskDefinition' --output text)
+          aws ecs describe-task-definition --task-definition "$TASK_ARN" --query taskDefinition > task.json
+          jq --arg IMAGE "$IMAGE" '.containerDefinitions[0].image=$IMAGE | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' task.json > next-task.json
+          NEXT_ARN=$(aws ecs register-task-definition --cli-input-json file://next-task.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$NEXT_ARN" >/dev/null
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+      - name: Register admin task revision
+        env: { CLUSTER: "${{ vars.ECS_CLUSTER }}", SERVICE: admin, IMAGE: "${{ vars.ADMIN_ECR_REPOSITORY }}:${{ github.sha }}" }
+        run: |
+          TASK_ARN=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" --query 'services[0].taskDefinition' --output text)
+          aws ecs describe-task-definition --task-definition "$TASK_ARN" --query taskDefinition > task.json
+          jq --arg IMAGE "$IMAGE" '.containerDefinitions[0].image=$IMAGE | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' task.json > next-task.json
+          NEXT_ARN=$(aws ecs register-task-definition --cli-input-json file://next-task.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$NEXT_ARN" >/dev/null
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+
