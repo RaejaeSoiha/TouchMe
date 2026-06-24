@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/auth/presentation/auth_controller.dart';
 
 class PresenceState {
   const PresenceState({
@@ -27,8 +28,14 @@ final presenceProvider =
 
 class PresenceNotifier extends Notifier<PresenceState> {
   @override
-  PresenceState build() =>
-      const PresenceState(onlineIds: {}, lastActiveAt: {});
+  PresenceState build() {
+    ref.listen(authControllerProvider, (previous, next) {
+      if (next.asData?.value != true) {
+        state = const PresenceState(onlineIds: {}, lastActiveAt: {});
+      }
+    });
+    return const PresenceState(onlineIds: {}, lastActiveAt: {});
+  }
 
   void seedUsers(Iterable<({String userId, bool online, DateTime? lastActiveAt})> users) {
     final online = Set<String>.from(state.onlineIds);
@@ -61,8 +68,23 @@ class PresenceNotifier extends Notifier<PresenceState> {
       ..[userId] = lastActiveAt;
     state = state.copyWith(onlineIds: onlineIds, lastActiveAt: active);
   }
+}
 
-  void clear() {
-    state = const PresenceState(onlineIds: {}, lastActiveAt: {});
-  }
+void schedulePresenceSeed(
+  Ref ref,
+  Iterable<({String userId, bool online, DateTime? lastActiveAt})> users,
+) {
+  Future.microtask(() {
+    if (!ref.mounted) return;
+    ref.read(presenceProvider.notifier).seedUsers(users);
+  });
+}
+
+void scheduleWidgetPresenceSeed(
+  WidgetRef ref,
+  Iterable<({String userId, bool online, DateTime? lastActiveAt})> users,
+) {
+  Future.microtask(() {
+    ref.read(presenceProvider.notifier).seedUsers(users);
+  });
 }

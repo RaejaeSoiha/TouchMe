@@ -12,8 +12,8 @@
 <key>UIMainStoryboardFile</key><string>Main</string>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
 <key>NSLocationWhenInUseUsageDescription</key><string>TouchMe uses your location to show people nearby.</string>
-<key>NSCameraUsageDescription</key><string>Take profile and chat photos.</string>
+<key>NSCameraUsageDescription</key><string>TouchMe uses your camera for profile photos, chat photos, and video calls.</string>
 <key>NSPhotoLibraryUsageDescription</key><string>Select profile and chat photos.</string>
-<key>NSMicrophoneUsageDescription</key><string>Record voice notes in chat.</string>
+<key>NSMicrophoneUsageDescription</key><string>TouchMe uses your microphone for voice notes, voice calls, and video calls.</string>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><false/></dict>
 </dict></plist>

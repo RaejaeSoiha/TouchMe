@@ -7,7 +7,7 @@ final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
 
 class TokenStore {
   static const _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
     webOptions: WebOptions(dbName: 'touch_me', publicKey: 'touch_me'),
   );
 

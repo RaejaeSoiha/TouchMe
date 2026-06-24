@@ -89,4 +89,7 @@ class FriendsRepository {
       _dio.post<void>('/friends/requests/$requestId/reject');
 
   Future<void> removeFriend(String userId) => _dio.delete<void>('/friends/$userId');
+
+  Future<void> cancelToUser(String userId) =>
+      _dio.delete<void>('/friends/requests/user/$userId');
 }

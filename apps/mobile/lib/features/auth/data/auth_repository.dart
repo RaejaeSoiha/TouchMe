@@ -46,12 +46,22 @@ class AuthRepository {
     await _save(response.data!);
   }
 
-  Future<void> requestPasswordReset(String email) =>
-      _dio.post<void>('/auth/password/request', data: {'email': email});
+  Future<String?> requestPasswordReset(String email) async {
+    final response = await _dio.post<Map<String, Object?>>(
+      '/auth/password/request',
+      data: {'email': email},
+    );
+    return response.data?['devToken'] as String?;
+  }
 
   Future<void> resetPassword(String token, String password) => _dio.post<void>(
     '/auth/password/reset',
     data: {'token': token, 'password': password},
+  );
+
+  Future<void> verifyEmail(String token) => _dio.post<void>(
+    '/auth/email/verify',
+    data: {'token': token},
   );
 
   Future<void> deleteAccount() => _dio.delete<void>('/auth/account');

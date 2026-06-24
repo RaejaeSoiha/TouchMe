@@ -62,7 +62,7 @@ class DiscoveryController extends AsyncNotifier<List<NearbyUser>> {
       filters: filters,
     );
     cursor = page.nextCursor;
-    ref.read(presenceProvider.notifier).seedUsers(
+    schedulePresenceSeed(ref,
       page.items.map(
         (user) => (
           userId: user.userId,
@@ -83,7 +83,7 @@ class DiscoveryController extends AsyncNotifier<List<NearbyUser>> {
         filters: filters,
       );
       cursor = page.nextCursor;
-      ref.read(presenceProvider.notifier).seedUsers(
+      schedulePresenceSeed(ref,
         page.items.map(
           (user) => (
             userId: user.userId,
@@ -104,7 +104,7 @@ class DiscoveryController extends AsyncNotifier<List<NearbyUser>> {
       filters: filters,
     );
     cursor = page.nextCursor;
-    ref.read(presenceProvider.notifier).seedUsers(
+    schedulePresenceSeed(ref,
       page.items.map(
         (user) => (
           userId: user.userId,

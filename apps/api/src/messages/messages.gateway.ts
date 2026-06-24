@@ -17,6 +17,7 @@ import { PrismaService } from '../database/prisma.service';
 import { PresenceService } from '../presence/presence.service';
 import { REDIS } from '../redis/redis.module';
 import { resolveCorsOrigins } from '../config/cors';
+import { CallAnswerDto, CallBusyDto, CallEndDto, CallIceCandidateDto, CallOfferDto } from './dto/call.dto';
 import { ReceiptDto, SendMessageDto } from './dto/message.dto';
 import { MessagesService } from './messages.service';
 import { ConversationsService } from './conversations.service';
@@ -131,5 +132,80 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {
     await this.conversations.assertMember(client.data.userId, body.conversationId);
     await client.join(`conversation:${body.conversationId}`);
+  }
+
+  @SubscribeMessage('call:offer')
+  async callOffer(@ConnectedSocket() client: AuthSocket, @MessageBody() dto: CallOfferDto) {
+    const otherUserId = await this.assertCallAllowed(client.data.userId, dto.conversationId);
+    this.server.to(`user:${otherUserId}`).emit('call:offer', {
+      conversationId: dto.conversationId,
+      callId: dto.callId,
+      fromUserId: client.data.userId,
+      media: dto.media,
+      offer: dto.offer,
+    });
+    return { ok: true };
+  }
+
+  @SubscribeMessage('call:answer')
+  async callAnswer(@ConnectedSocket() client: AuthSocket, @MessageBody() dto: CallAnswerDto) {
+    const otherUserId = await this.assertCallAllowed(client.data.userId, dto.conversationId);
+    this.server.to(`user:${otherUserId}`).emit('call:answer', {
+      conversationId: dto.conversationId,
+      callId: dto.callId,
+      fromUserId: client.data.userId,
+      answer: dto.answer,
+    });
+    return { ok: true };
+  }
+
+  @SubscribeMessage('call:ice')
+  async callIce(@ConnectedSocket() client: AuthSocket, @MessageBody() dto: CallIceCandidateDto) {
+    const otherUserId = await this.assertCallAllowed(client.data.userId, dto.conversationId);
+    this.server.to(`user:${otherUserId}`).emit('call:ice', {
+      conversationId: dto.conversationId,
+      callId: dto.callId,
+      fromUserId: client.data.userId,
+      candidate: dto.candidate,
+    });
+  }
+
+  @SubscribeMessage('call:end')
+  async callEnd(@ConnectedSocket() client: AuthSocket, @MessageBody() dto: CallEndDto) {
+    const otherUserId = await this.assertCallAllowed(client.data.userId, dto.conversationId);
+    this.server.to(`user:${otherUserId}`).emit('call:end', {
+      conversationId: dto.conversationId,
+      callId: dto.callId,
+      fromUserId: client.data.userId,
+      reason: dto.reason,
+    });
+  }
+
+  @SubscribeMessage('call:busy')
+  async callBusy(@ConnectedSocket() client: AuthSocket, @MessageBody() dto: CallBusyDto) {
+    const otherUserId = await this.assertCallAllowed(client.data.userId, dto.conversationId);
+    this.server.to(`user:${otherUserId}`).emit('call:busy', {
+      conversationId: dto.conversationId,
+      callId: dto.callId,
+      fromUserId: client.data.userId,
+      busy: dto.busy,
+    });
+  }
+
+  private async assertCallAllowed(userId: string, conversationId: string) {
+    await this.conversations.assertMember(userId, conversationId);
+    const members = await this.prisma.conversationMember.findMany({
+      where: { conversationId },
+      select: { userId: true },
+    });
+    const other = members.find((member) => member.userId !== userId);
+    if (!other) throw new WsException('Call recipient not found');
+
+    const friendship = await this.prisma.friendship.findUnique({
+      where: { userId_friendId: { userId, friendId: other.userId } },
+      select: { userId: true },
+    });
+    if (!friendship) throw new WsException('Calls require accepted friends');
+    return other.userId;
   }
 }

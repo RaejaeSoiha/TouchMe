@@ -42,12 +42,14 @@ class DiscoveryRepository {
     String? cursor,
     DiscoveryFilters? filters,
   }) async {
+    final queryParameters = <String, Object?>{
+      ...?filters?.toQuery(),
+    };
+    if (cursor != null) queryParameters['cursor'] = cursor;
+
     final response = await _dio.get<Map<String, Object?>>(
       '/discovery',
-      queryParameters: {
-        if (cursor != null) 'cursor': cursor,
-        ...?filters?.toQuery(),
-      },
+      queryParameters: queryParameters,
     );
     final data = response.data!;
     return DiscoveryPage(

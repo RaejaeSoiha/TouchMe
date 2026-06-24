@@ -70,7 +70,7 @@ class _FriendsList extends ConsumerWidget {
               ],
             );
           }
-          ref.read(presenceProvider.notifier).seedUsers(
+          scheduleWidgetPresenceSeed(ref,
             items.map(
               (friend) => (
                 userId: friend.userId,

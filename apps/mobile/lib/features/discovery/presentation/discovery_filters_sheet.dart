@@ -5,9 +5,10 @@ Future<DiscoveryFilters?> showDiscoveryFiltersSheet(
   BuildContext context,
   DiscoveryFilters current,
 ) {
-  var minAge = current.minAge.toDouble();
-  var maxAge = current.maxAge.toDouble();
-  var distance = current.maxDistanceKm.toDouble();
+  var minAge = current.minAge.clamp(18, 99).toDouble();
+  var maxAge = current.maxAge.clamp(18, 99).toDouble();
+  if (maxAge < minAge) maxAge = minAge;
+  var distance = current.maxDistanceKm.clamp(1, 500).toDouble();
   final genders = Set<String>.from(current.genders);
 
   return showModalBottomSheet<DiscoveryFilters>(
@@ -56,8 +57,8 @@ Future<DiscoveryFilters?> showDiscoveryFiltersSheet(
             RangeSlider(
               values: RangeValues(minAge, maxAge),
               min: 18,
-              max: 80,
-              divisions: 62,
+              max: 99,
+              divisions: 81,
               onChanged: (value) => setState(() {
                 minAge = value.start;
                 maxAge = value.end;
@@ -67,8 +68,8 @@ Future<DiscoveryFilters?> showDiscoveryFiltersSheet(
             Slider(
               value: distance,
               min: 1,
-              max: 200,
-              divisions: 199,
+              max: 500,
+              divisions: 499,
               label: '${distance.round()} km',
               onChanged: (value) => setState(() => distance = value),
             ),

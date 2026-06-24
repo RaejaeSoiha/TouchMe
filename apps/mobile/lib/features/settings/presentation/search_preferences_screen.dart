@@ -28,9 +28,10 @@ class _SearchPreferencesScreenState extends ConsumerState<SearchPreferencesScree
     genders
       ..clear()
       ..addAll(profile.showMe);
-    minAge = profile.minAge.toDouble();
-    maxAge = profile.maxAge.toDouble();
-    distance = profile.maxDistanceKm.toDouble();
+    minAge = profile.minAge.clamp(18, 99).toDouble();
+    maxAge = profile.maxAge.clamp(18, 99).toDouble();
+    if (maxAge < minAge) maxAge = minAge;
+    distance = profile.maxDistanceKm.clamp(1, 500).toDouble();
   }
 
   Future<void> _save() async {
@@ -125,8 +126,8 @@ class _SearchPreferencesScreenState extends ConsumerState<SearchPreferencesScree
                 RangeSlider(
                   values: RangeValues(minAge, maxAge),
                   min: 18,
-                  max: 80,
-                  divisions: 62,
+                  max: 99,
+                  divisions: 81,
                   onChanged: (value) => setState(() {
                     minAge = value.start;
                     maxAge = value.end;
@@ -136,8 +137,8 @@ class _SearchPreferencesScreenState extends ConsumerState<SearchPreferencesScree
                 Slider(
                   value: distance,
                   min: 1,
-                  max: 200,
-                  divisions: 199,
+                  max: 500,
+                  divisions: 499,
                   label: '${distance.round()} km',
                   onChanged: (value) => setState(() => distance = value),
                 ),

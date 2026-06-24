@@ -131,6 +131,32 @@ export class FriendsService {
     });
   }
 
+  async cancelRequest(senderId: string, requestId: string) {
+    const request = await this.prisma.friendRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.senderId !== senderId) throw new NotFoundException('Friend request not found');
+    if (request.status !== FriendRequestStatus.PENDING) {
+      throw new BadRequestException('Request is not pending');
+    }
+    return this.prisma.friendRequest.update({
+      where: { id: requestId },
+      data: { status: FriendRequestStatus.CANCELLED },
+    });
+  }
+
+  async cancelOutgoing(senderId: string, recipientId: string) {
+    const request = await this.prisma.friendRequest.findUnique({
+      where: { senderId_recipientId: { senderId, recipientId } },
+    });
+    if (!request || request.senderId !== senderId) throw new NotFoundException('Friend request not found');
+    if (request.status !== FriendRequestStatus.PENDING) {
+      throw new BadRequestException('Request is not pending');
+    }
+    return this.prisma.friendRequest.update({
+      where: { id: request.id },
+      data: { status: FriendRequestStatus.CANCELLED },
+    });
+  }
+
   async removeFriend(userId: string, friendId: string) {
     await this.prisma.$transaction([
       this.prisma.friendship.deleteMany({

@@ -1,9 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/safety/user_actions_sheet.dart';
 import '../../../core/presence/presence_avatar.dart';
 import '../../conversations/data/conversations_repository.dart';
+import '../../chat/presentation/chat_screen.dart';
 import '../../friends/data/friends_repository.dart';
 import '../domain/nearby_user.dart';
 
@@ -64,11 +65,37 @@ class NearbyUserTile extends ConsumerWidget {
                 if (context.mounted) {
                   context.push(
                     '/chats/${conversation.id}',
-                    extra: user.profile.displayName,
+                    extra: ChatRouteExtra(
+                      title: user.profile.displayName,
+                      otherUserId: user.userId,
+                      otherUserName: user.profile.displayName,
+                    ),
                   );
                 }
               },
               icon: const Icon(Icons.chat_bubble_outline),
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'safety') {
+                  showBlockReportSheet(
+                    context,
+                    ref,
+                    userId: user.userId,
+                    displayName: user.profile.displayName,
+                  );
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: 'safety',
+                  child: ListTile(
+                    leading: Icon(Icons.shield_outlined),
+                    title: Text('Block or report'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -130,7 +157,21 @@ class _FriendButtonState extends ConsumerState<_FriendButton> {
       case 'FRIENDS':
         return const Icon(Icons.check_circle, color: Colors.green);
       case 'REQUEST_SENT':
-        return const Icon(Icons.hourglass_top, color: Colors.orange);
+        return IconButton(
+          tooltip: 'Cancel friend request',
+          onPressed: () async {
+            setState(() => loading = true);
+            try {
+              await ref
+                  .read(friendsRepositoryProvider)
+                  .cancelToUser(widget.user.userId);
+              if (mounted) setState(() => status = 'NONE');
+            } finally {
+              if (mounted) setState(() => loading = false);
+            }
+          },
+          icon: const Icon(Icons.hourglass_top, color: Colors.orange),
+        );
       case 'REQUEST_RECEIVED':
         return IconButton(
           tooltip: 'Accept friend',

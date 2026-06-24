@@ -60,6 +60,28 @@ export class ProfilesService {
   }
 
   interests() { return this.prisma.interest.findMany({ where: { active: true }, orderBy: { label: 'asc' } }); }
+
+  async publicProfile(viewerId: string, userId: string) {
+    const blocked = await this.prisma.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: viewerId, blockedId: userId },
+          { blockerId: userId, blockedId: viewerId },
+        ],
+      },
+    });
+    if (blocked) throw new NotFoundException('Profile not found');
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId },
+      include: {
+        photos: { where: { status: 'APPROVED' }, orderBy: { position: 'asc' } },
+        interests: { include: { interest: true } },
+      },
+    });
+    if (!profile) throw new NotFoundException('Profile not found');
+    return profile;
+  }
+
   async passport(userId: string, latitude: number, longitude: number) { const plan = await this.subscriptions.entitlements(userId); if (!plan?.passportMode) throw new BadRequestException('Passport mode requires Premium'); return this.prisma.profile.update({ where: { userId }, data: { passportLatitude: latitude, passportLongitude: longitude } }); }
 
   async reorderPhotos(userId: string, photoIds: string[]) {

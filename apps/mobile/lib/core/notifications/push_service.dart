@@ -10,7 +10,13 @@ final pushRegistrationProvider = FutureProvider<void>((ref) async {
   if (kIsWeb || AppConfig.firebaseApiKey.isEmpty) return;
 
   final settings = await ref.watch(appSettingsProvider.future);
-  if (!settings.pushNotificationsEnabled) return;
+  final dio = ref.read(dioProvider);
+  if (!settings.pushNotificationsEnabled) {
+    try {
+      await dio.delete<void>('/notifications/devices');
+    } catch (_) {}
+    return;
+  }
 
   await Firebase.initializeApp(
     options: const FirebaseOptions(

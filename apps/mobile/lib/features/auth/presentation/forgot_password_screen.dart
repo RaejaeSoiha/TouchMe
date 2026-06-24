@@ -70,12 +70,25 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       try {
                         final repo = ref.read(authRepositoryProvider);
                         if (!requested) {
-                          await repo.requestPasswordReset(email.text.trim());
+                          final devToken =
+                              await repo.requestPasswordReset(email.text.trim());
                           setState(() {
                             requested = true;
-                            message = 'If that email exists, a reset link was sent.';
+                            if (devToken != null) {
+                              token.text = devToken;
+                              message =
+                                  'Local dev token filled automatically. Enter a new strong password.';
+                            } else {
+                              message = 'If that email exists, a reset link was sent.';
+                            }
                           });
                         } else {
+                          final validationError =
+                              _validateStrongPassword(password.text);
+                          if (validationError != null) {
+                            setState(() => message = validationError);
+                            return;
+                          }
                           await repo.resetPassword(token.text.trim(), password.text);
                           if (context.mounted) context.go('/login');
                         }
@@ -92,4 +105,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       ),
     );
   }
+}
+
+String? _validateStrongPassword(String password) {
+  if (password.length < 10) return 'Use at least 10 characters';
+  if (!RegExp('[a-z]').hasMatch(password)) return 'Add a lowercase letter';
+  if (!RegExp('[A-Z]').hasMatch(password)) return 'Add an uppercase letter';
+  if (!RegExp('[0-9]').hasMatch(password)) return 'Add a number';
+  if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) return 'Add a symbol';
+  return null;
 }

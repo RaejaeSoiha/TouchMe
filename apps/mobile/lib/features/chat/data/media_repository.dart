@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
@@ -10,8 +11,8 @@ final mediaRepositoryProvider = Provider<MediaRepository>(
 class MediaRepository {
   MediaRepository(this._dio);
   final Dio _dio;
-  Future<String> upload(File file, String contentType) async {
-    final bytes = await file.readAsBytes();
+
+  Future<String> uploadBytes(Uint8List bytes, String contentType) async {
     final response = await _dio.post<Map<String, Object?>>(
       '/uploads/presign',
       data: {

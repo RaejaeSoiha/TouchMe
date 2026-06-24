@@ -7,10 +7,7 @@ import 'presence_provider.dart';
 
 final presenceConnectionProvider = Provider<void>((ref) {
   final auth = ref.watch(authControllerProvider);
-  if (auth.asData?.value != true) {
-    ref.read(presenceProvider.notifier).clear();
-    return;
-  }
+  if (auth.asData?.value != true) return;
 
   final socket = ref.watch(chatSocketProvider);
   StreamSubscription<PresenceEvent>? subscription;

@@ -64,12 +64,25 @@ class PremiumScreen extends ConsumerWidget {
                         ),
                         trailing: FilledButton(
                           onPressed: () async {
-                            final url = await ref
-                                .read(subscriptionsRepositoryProvider)
-                                .checkout(plan.code);
-                            final uri = Uri.parse(url);
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            try {
+                              final url = await ref
+                                  .read(subscriptionsRepositoryProvider)
+                                  .checkout(plan.code);
+                              final uri = Uri.parse(url);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              }
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not start checkout. Try again.'),
+                                  ),
+                                );
+                              }
                             }
                           },
                           child: const Text('Subscribe'),
@@ -83,11 +96,23 @@ class PremiumScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           FilledButton.tonalIcon(
             onPressed: () async {
-              await ref.read(subscriptionsRepositoryProvider).activateBoost();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Featured placement active for 30 minutes')),
-                );
+              try {
+                await ref.read(subscriptionsRepositoryProvider).activateBoost();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Featured placement active for 30 minutes'),
+                    ),
+                  );
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not activate boost. Try again.'),
+                    ),
+                  );
+                }
               }
             },
             icon: const Icon(Icons.rocket_launch_outlined),

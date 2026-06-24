@@ -28,7 +28,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(authControllerProvider, (_, next) {
-      if (next.value == true && context.mounted) context.go('/nearby');
+      if (next.value == true && context.mounted) context.go('/home');
     });
     return Scaffold(
       appBar: AppBar(title: const Text('Phone sign in')),
@@ -56,7 +56,10 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
             if (error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                child: Text(
+                  error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
             const SizedBox(height: 20),
             FilledButton(
@@ -69,21 +72,30 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen> {
                       });
                       try {
                         if (!codeSent) {
-                          await ref.read(authRepositoryProvider).requestOtp(phone.text.trim());
+                          await ref
+                              .read(authRepositoryProvider)
+                              .requestOtp(phone.text.trim());
                           setState(() => codeSent = true);
                         } else {
-                          await ref.read(authControllerProvider.notifier).verifyOtp(
-                            phone.text.trim(),
-                            code.text.trim(),
-                          );
+                          await ref
+                              .read(authControllerProvider.notifier)
+                              .verifyOtp(phone.text.trim(), code.text.trim());
                         }
                       } catch (_) {
-                        setState(() => error = 'Verification failed. Try again.');
+                        setState(
+                          () => error = 'Verification failed. Try again.',
+                        );
                       } finally {
                         setState(() => loading = false);
                       }
                     },
-              child: Text(loading ? 'Please wait…' : codeSent ? 'Verify code' : 'Send code'),
+              child: Text(
+                loading
+                    ? 'Please wait…'
+                    : codeSent
+                    ? 'Verify code'
+                    : 'Send code',
+              ),
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -19,8 +20,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final password = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
-  bool get _googleEnabled =>
-      !kIsWeb || AppConfig.googleClientId.isNotEmpty;
+  bool get _googleEnabled => !kIsWeb || AppConfig.googleClientId.isNotEmpty;
 
   @override
   void dispose() {
@@ -35,7 +35,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
     final auth = account.authentication;
     if (auth.idToken == null) return;
-    await ref.read(authControllerProvider.notifier).social('google', auth.idToken!);
+    await ref
+        .read(authControllerProvider.notifier)
+        .social('google', auth.idToken!);
   }
 
   Future<void> _appleSignIn() async {
@@ -43,10 +45,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       scopes: [AppleIDAuthorizationScopes.email],
     );
     if (credential.identityToken == null) return;
-    await ref.read(authControllerProvider.notifier).social(
-      'apple',
-      credential.identityToken!,
-    );
+    await ref
+        .read(authControllerProvider.notifier)
+        .social('apple', credential.identityToken!);
   }
 
   @override
@@ -55,7 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ref.listen(authControllerProvider, (_, next) {
       if (next.value == true) {
         ref.invalidate(myProfileProvider);
-        context.go('/nearby');
+        context.go('/home');
       }
     });
     return Scaffold(
@@ -118,7 +119,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 14),
                         child: Text(
-                          'Sign in failed. Check your credentials and that Docker API is running.',
+                          _loginErrorMessage(auth.error),
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.error,
                           ),
@@ -137,9 +138,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             },
                       child: Text(auth.isLoading ? 'Signing in…' : 'Sign in'),
                     ),
+                    if (kDebugMode) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: auth.isLoading
+                            ? null
+                            : () => _loginWithTestAccount(
+                                'ourmon@gmail.com',
+                                'Ourmon1212!',
+                              ),
+                        icon: const Icon(Icons.bug_report_outlined),
+                        label: const Text('Test login: Ourmon'),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: auth.isLoading
+                            ? null
+                            : () => _loginWithTestAccount(
+                                'demo@touchme.local',
+                                'Demo121212!',
+                              ),
+                        icon: const Icon(Icons.bug_report_outlined),
+                        label: const Text('Test login: Demo'),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
-                      onPressed: auth.isLoading ? null : () => context.go('/otp-login'),
+                      onPressed: auth.isLoading
+                          ? null
+                          : () => context.go('/otp-login'),
                       icon: const Icon(Icons.phone_android_outlined),
                       label: const Text('Continue with phone'),
                     ),
@@ -173,5 +200,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
     );
+  }
+
+  void _loginWithTestAccount(String testEmail, String testPassword) {
+    email.text = testEmail;
+    password.text = testPassword;
+    ref.read(authControllerProvider.notifier).login(testEmail, testPassword);
+  }
+
+  String _loginErrorMessage(Object? error) {
+    if (error is DioException) {
+      final status = error.response?.statusCode;
+      if (status == 401) {
+        return 'Sign in failed: wrong email or password.';
+      }
+      if (status != null) {
+        return 'Sign in failed: API returned HTTP $status from ${AppConfig.apiBaseUrl}.';
+      }
+      return 'Sign in failed: cannot reach ${AppConfig.apiBaseUrl}. Make sure Docker API is running.';
+    }
+    return 'Sign in failed: ${error ?? 'unknown error'}';
   }
 }

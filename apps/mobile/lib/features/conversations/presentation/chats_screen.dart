@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/layout/responsive.dart';
 import '../../../core/presence/presence_avatar.dart';
 import '../../../core/presence/presence_provider.dart';
+import '../../chat/presentation/chat_screen.dart';
 import '../data/conversations_repository.dart';
 
 class ChatsScreen extends ConsumerWidget {
@@ -36,7 +37,7 @@ class ChatsScreen extends ConsumerWidget {
                 ],
               );
             }
-            ref.read(presenceProvider.notifier).seedUsers(
+            scheduleWidgetPresenceSeed(ref,
               items.map(
                 (chat) => (
                   userId: chat.otherUser.id,
@@ -60,7 +61,14 @@ class ChatsScreen extends ConsumerWidget {
                             ? 'Voice note'
                             : 'Start chatting';
                 return ListTile(
-                  onTap: () => context.push('/chats/${chat.id}'),
+                  onTap: () => context.push(
+                    '/chats/${chat.id}',
+                    extra: ChatRouteExtra(
+                      title: chat.otherUser.displayName,
+                      otherUserId: chat.otherUser.id,
+                      otherUserName: chat.otherUser.displayName,
+                    ),
+                  ),
                   leading: UserPresenceAvatar(
                     userId: chat.otherUser.id,
                     radius: 22,

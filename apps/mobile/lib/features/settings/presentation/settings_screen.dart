@@ -8,7 +8,9 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../profile/data/profile_repository.dart';
 
 class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -16,9 +18,14 @@ class SettingsScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w900)),
-      ),
+      appBar: embedded
+          ? null
+          : AppBar(
+              title: const Text(
+                'Settings',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
       body: ResponsiveBody(
         child: ListView(
           children: [
@@ -29,8 +36,13 @@ class SettingsScreen extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: const Icon(Icons.favorite_rounded, color: Color(0xFFE84A72)),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer,
+                      child: const Icon(
+                        Icons.favorite_rounded,
+                        color: Color(0xFFE84A72),
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -39,9 +51,8 @@ class SettingsScreen extends ConsumerWidget {
                         children: [
                           Text(
                             'TouchMe',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                            ),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                           const SizedBox(height: 4),
                           profile.when(
@@ -102,9 +113,9 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                         value: data.discoverable,
                         onChanged: (value) async {
-                          await ref.read(profileRepositoryProvider).save(
-                            data.copyWith(discoverable: value),
-                          );
+                          await ref
+                              .read(profileRepositoryProvider)
+                              .save(data.copyWith(discoverable: value));
                           ref.invalidate(myProfileProvider);
                         },
                       );
@@ -114,7 +125,9 @@ class SettingsScreen extends ConsumerWidget {
                   ListTile(
                     leading: const Icon(Icons.shield_outlined),
                     title: const Text('Safety center'),
-                    subtitle: const Text('Blocked users, reports, delete account'),
+                    subtitle: const Text(
+                      'Blocked users, reports, delete account',
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/settings/safety'),
                   ),
@@ -142,9 +155,7 @@ class SettingsScreen extends ConsumerWidget {
                     await ref
                         .read(appSettingsProvider.notifier)
                         .setPushNotifications(value);
-                    if (value) {
-                      ref.invalidate(pushRegistrationProvider);
-                    }
+                    ref.invalidate(pushRegistrationProvider);
                   },
                 ),
               ),
@@ -156,7 +167,9 @@ class SettingsScreen extends ConsumerWidget {
                   ListTile(
                     leading: const Icon(Icons.workspace_premium_outlined),
                     title: const Text('TouchMe Plus'),
-                    subtitle: const Text('Wider search, featured nearby, explore cities'),
+                    subtitle: const Text(
+                      'Wider search, featured nearby, explore cities',
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/settings/premium'),
                   ),
@@ -164,7 +177,9 @@ class SettingsScreen extends ConsumerWidget {
                   ListTile(
                     leading: const Icon(Icons.public),
                     title: const Text('Explore another city'),
-                    subtitle: const Text('Change your location on the nearby list'),
+                    subtitle: const Text(
+                      'Change your location on the nearby list',
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/settings/passport'),
                   ),
@@ -185,7 +200,9 @@ class SettingsScreen extends ConsumerWidget {
                   ListTile(
                     leading: const Icon(Icons.policy_outlined),
                     title: const Text('Community guidelines'),
-                    subtitle: const Text('Be kind, report abuse, respect privacy'),
+                    subtitle: const Text(
+                      'Be kind, report abuse, respect privacy',
+                    ),
                     onTap: () => showDialog<void>(
                       context: context,
                       builder: (context) => AlertDialog(
@@ -223,8 +240,14 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.delete_forever_outlined, color: Colors.red),
-                    title: const Text('Delete account', style: TextStyle(color: Colors.red)),
+                    leading: const Icon(
+                      Icons.delete_forever_outlined,
+                      color: Colors.red,
+                    ),
+                    title: const Text(
+                      'Delete account',
+                      style: TextStyle(color: Colors.red),
+                    ),
                     onTap: () => context.push('/settings/delete-account'),
                   ),
                 ],

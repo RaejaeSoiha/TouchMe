@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../notifications/notifications_screen.dart';
+import '../../features/account/presentation/account_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/otp_login_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
+import '../../features/auth/presentation/verify_email_screen.dart';
 import '../../features/chat/presentation/chat_screen.dart';
 import '../../features/conversations/presentation/chats_screen.dart';
 import '../../features/discovery/presentation/discovery_screen.dart';
 import '../../features/friends/presentation/friends_screen.dart';
+import '../../features/home/presentation/home_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/safety/presentation/delete_account_screen.dart';
 import '../../features/safety/presentation/safety_screen.dart';
@@ -25,9 +29,7 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 
@@ -37,7 +39,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     redirect: (context, state) {
       final loggedIn = auth.asData?.value == true;
-      final authRoute = state.matchedLocation == '/login' ||
+      final authRoute =
+          state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
           state.matchedLocation == '/otp-login' ||
           state.matchedLocation == '/forgot-password';
@@ -45,10 +48,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         return state.matchedLocation == '/splash' ? null : '/splash';
       }
       if (state.matchedLocation == '/splash') {
-        return loggedIn ? '/nearby' : '/login';
+        return loggedIn ? '/home' : '/login';
       }
       if (!loggedIn && !authRoute) return '/login';
-      if (loggedIn && authRoute) return '/nearby';
+      if (loggedIn && authRoute) return '/home';
       return null;
     },
     routes: [
@@ -56,24 +59,57 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
       GoRoute(path: '/otp-login', builder: (_, _) => const OtpLoginScreen()),
-      GoRoute(path: '/forgot-password', builder: (_, _) => const ForgotPasswordScreen()),
-      GoRoute(path: '/settings/safety', builder: (_, _) => const SafetyScreen()),
-      GoRoute(path: '/settings/premium', builder: (_, _) => const PremiumScreen()),
-      GoRoute(path: '/settings/passport', builder: (_, _) => const PassportScreen()),
-      GoRoute(path: '/settings/delete-account', builder: (_, _) => const DeleteAccountScreen()),
-      GoRoute(path: '/settings/search-preferences', builder: (_, _) => const SearchPreferencesScreen()),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (_, _) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (_, _) => const VerifyEmailScreen(),
+      ),
+      GoRoute(
+        path: '/settings/safety',
+        builder: (_, _) => const SafetyScreen(),
+      ),
+      GoRoute(
+        path: '/settings/premium',
+        builder: (_, _) => const PremiumScreen(),
+      ),
+      GoRoute(
+        path: '/settings/passport',
+        builder: (_, _) => const PassportScreen(),
+      ),
+      GoRoute(
+        path: '/settings/delete-account',
+        builder: (_, _) => const DeleteAccountScreen(),
+      ),
+      GoRoute(
+        path: '/settings/search-preferences',
+        builder: (_, _) => const SearchPreferencesScreen(),
+      ),
       GoRoute(path: '/settings/about', builder: (_, _) => const AboutScreen()),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(shell: shell),
         branches: [
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/nearby', builder: (_, _) => const DiscoveryScreen()),
+              GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
             ],
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/friends', builder: (_, _) => const FriendsScreen()),
+              GoRoute(
+                path: '/nearby',
+                builder: (_, _) => const DiscoveryScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/friends',
+                builder: (_, _) => const FriendsScreen(),
+              ),
             ],
           ),
           StatefulShellBranch(
@@ -84,10 +120,25 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: ':conversationId',
-                    builder: (_, state) => ChatScreen(
-                      conversationId: state.pathParameters['conversationId']!,
-                      title: state.extra as String?,
-                    ),
+                    builder: (_, state) {
+                      final extra = state.extra;
+                      String? title;
+                      String? otherUserId;
+                      String? otherUserName;
+                      if (extra is ChatRouteExtra) {
+                        title = extra.title;
+                        otherUserId = extra.otherUserId;
+                        otherUserName = extra.otherUserName;
+                      } else if (extra is String) {
+                        title = extra;
+                      }
+                      return ChatScreen(
+                        conversationId: state.pathParameters['conversationId']!,
+                        title: title,
+                        otherUserId: otherUserId,
+                        otherUserName: otherUserName,
+                      );
+                    },
                   ),
                 ],
               ),
@@ -95,6 +146,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
+              GoRoute(
+                path: '/notifications',
+                builder: (_, _) => const NotificationsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/account',
+                builder: (_, _) => const AccountScreen(),
+              ),
               GoRoute(
                 path: '/profile',
                 builder: (_, _) => const ProfileScreen(),
@@ -105,11 +168,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                 ],
               ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+              GoRoute(
+                path: '/settings',
+                builder: (_, _) => const SettingsScreen(),
+              ),
             ],
           ),
         ],

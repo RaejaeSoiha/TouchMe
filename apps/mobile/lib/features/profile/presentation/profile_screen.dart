@@ -9,8 +9,9 @@ import '../domain/user_profile.dart';
 import '../../discovery/presentation/discovery_controller.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
-  const ProfileScreen({this.editing = false, super.key});
+  const ProfileScreen({this.editing = false, this.embedded = false, super.key});
   final bool editing;
+  final bool embedded;
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -51,9 +52,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     selectedInterests
       ..clear()
       ..addAll(profile.interestIds);
-    minAge = profile.minAge.toDouble();
-    maxAge = profile.maxAge.toDouble();
-    distance = profile.maxDistanceKm.toDouble();
+    minAge = profile.minAge.clamp(18, 99).toDouble();
+    maxAge = profile.maxAge.clamp(18, 99).toDouble();
+    if (maxAge < minAge) maxAge = minAge;
+    distance = profile.maxDistanceKm.clamp(1, 500).toDouble();
     birthDate = profile.birthDate;
   }
 
@@ -77,24 +79,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     setState(() => uploading = true);
     try {
       final bytes = await picked.readAsBytes();
-      await ref.read(photoRepositoryProvider).uploadProfilePhotoBytes(
-        bytes,
-        PhotoRepository.contentTypeForFilename(picked.name),
-        position,
-      );
+      await ref
+          .read(photoRepositoryProvider)
+          .uploadProfilePhotoBytes(
+            bytes,
+            PhotoRepository.contentTypeForFilename(picked.name),
+            position,
+          );
       ref.invalidate(myProfileProvider);
       setState(() => seeded = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Photo uploaded!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Photo uploaded!')));
       }
     } catch (error) {
       if (mounted) {
         final message = error.toString().contains('401')
             ? 'Session expired. Sign out and sign in again.'
             : 'Photo upload failed: $error';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => uploading = false);
@@ -121,326 +127,387 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final isEditing = widget.editing || profile.asData?.value == null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Set up your profile' : 'My profile'),
-        actions: [
-          if (!isEditing)
-            IconButton(
-              onPressed: () => context.go('/profile/edit'),
-              icon: const Icon(Icons.edit),
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              title: Text(isEditing ? 'Set up your profile' : 'My profile'),
+              actions: [
+                if (!isEditing)
+                  IconButton(
+                    onPressed: () => context.go('/profile/edit'),
+                    icon: const Icon(Icons.edit),
+                  ),
+              ],
             ),
-        ],
-      ),
       body: profile.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Could not load profile: $error')),
+        error: (error, _) =>
+            Center(child: Text('Could not load profile: $error')),
         data: (data) {
           seed(data);
           if (!isEditing && data != null) {
             return ResponsiveBody(
               child: ListView(
-              children: [
-                Center(
-                  child: CircleAvatar(
-                    radius: 60,
-                    backgroundImage: data.photos.isEmpty
-                        ? null
-                        : NetworkImage(data.photos.first.url),
-                    child: data.photos.isEmpty
-                        ? Text(
-                            data.displayName.characters.first.toUpperCase(),
-                            style: const TextStyle(fontSize: 42),
-                          )
-                        : null,
+                children: [
+                  Center(
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundImage: data.photos.isEmpty
+                          ? null
+                          : NetworkImage(data.photos.first.url),
+                      child: data.photos.isEmpty
+                          ? Text(
+                              data.displayName.characters.first.toUpperCase(),
+                              style: const TextStyle(fontSize: 42),
+                            )
+                          : null,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  data.displayName,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
+                  const SizedBox(height: 20),
+                  Text(
+                    data.displayName,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                if (data.bio != null && data.bio!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Text(data.bio!, textAlign: TextAlign.center),
+                  if (data.bio != null && data.bio!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(data.bio!, textAlign: TextAlign.center),
+                    ),
+                  ListTile(
+                    leading: const Icon(Icons.cake_outlined),
+                    title: Text(
+                      'Born ${data.birthDate.toLocal().toString().split(' ').first}',
+                    ),
                   ),
-                ListTile(
-                  leading: const Icon(Icons.cake_outlined),
-                  title: Text('Born ${data.birthDate.toLocal().toString().split(' ').first}'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.location_city),
-                  title: Text(data.city ?? 'Add your city'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.tune),
-                  title: Text(
-                    '${data.minAge}–${data.maxAge} years · ${data.maxDistanceKm} km',
+                  ListTile(
+                    leading: const Icon(Icons.location_city),
+                    title: Text(data.city ?? 'Add your city'),
                   ),
-                ),
-                if (data.photos.length > 1) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: data.photos.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) => ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          data.photos[index].url,
-                          width: 80,
-                          height: 100,
-                          fit: BoxFit.cover,
+                  ListTile(
+                    leading: const Icon(Icons.tune),
+                    title: Text(
+                      '${data.minAge}–${data.maxAge} years · ${data.maxDistanceKm} km',
+                    ),
+                  ),
+                  if (data.photos.length > 1) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 100,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: data.photos.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) => ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            data.photos[index].url,
+                            width: 80,
+                            height: 100,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
-            ),
+              ),
             );
           }
 
           return ResponsiveBody(
             child: ListView(
-            children: [
-              if (data == null)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Welcome to TouchMe! Add your details so people nearby can find you.',
-                      style: Theme.of(context).textTheme.titleMedium,
+              children: [
+                if (data == null)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Welcome to TouchMe! Add your details so people nearby can find you.',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                     ),
                   ),
-                ),
-              if (data != null && data.photos.isNotEmpty)
-                SizedBox(
-                  height: 100,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: data.photos.length + (data.photos.length < 9 ? 1 : 0),
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      if (index >= data.photos.length) {
-                        return OutlinedButton(
-                          onPressed: uploading ? null : () => pickPhoto(index),
-                          child: const Icon(Icons.add),
-                        );
-                      }
-                      final photo = data.photos[index];
-                      return Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              photo.url,
-                              width: 80,
-                              height: 100,
-                              fit: BoxFit.cover,
+                if (data != null && data.photos.isNotEmpty)
+                  SizedBox(
+                    height: 100,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount:
+                          data.photos.length + (data.photos.length < 9 ? 1 : 0),
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        if (index >= data.photos.length) {
+                          return OutlinedButton(
+                            onPressed: uploading
+                                ? null
+                                : () => pickPhoto(index),
+                            child: const Icon(Icons.add),
+                          );
+                        }
+                        final photo = data.photos[index];
+                        return GestureDetector(
+                          onLongPress: index > 0
+                              ? () async {
+                                  final reordered = List.of(data.photos);
+                                  final item = reordered.removeAt(index);
+                                  reordered.insert(index - 1, item);
+                                  try {
+                                    await ref
+                                        .read(photoRepositoryProvider)
+                                        .reorderPhotos(
+                                          reordered.map((p) => p.id).toList(),
+                                        );
+                                    ref.invalidate(myProfileProvider);
+                                    setState(() => seeded = false);
+                                  } catch (_) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Could not reorder photos'),
+                                      ),
+                                    );
+                                  }
+                                }
+                              : null,
+                          child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                photo.url,
+                                width: 80,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                          ),
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: IconButton(
-                              icon: const Icon(Icons.close, size: 18),
-                              onPressed: () async {
-                                await ref
-                                    .read(photoRepositoryProvider)
-                                    .deletePhoto(photo.id);
-                                ref.invalidate(myProfileProvider);
-                                setState(() => seeded = false);
-                              },
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, size: 18),
+                                onPressed: () async {
+                                  await ref
+                                      .read(photoRepositoryProvider)
+                                      .deletePhoto(photo.id);
+                                  ref.invalidate(myProfileProvider);
+                                  setState(() => seeded = false);
+                                },
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                )
-              else
-                OutlinedButton.icon(
-                  onPressed: uploading ? null : () => pickPhoto(0),
-                  icon: const Icon(Icons.add_a_photo),
-                  label: Text(uploading ? 'Uploading…' : 'Add a photo'),
-                ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: name,
-                decoration: const InputDecoration(
-                  labelText: 'Display name',
-                  hintText: 'Required — e.g. Alex',
-                ),
-              ),
-              const SizedBox(height: 14),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Birthday'),
-                subtitle: Text(birthDate.toLocal().toString().split(' ').first),
-                trailing: TextButton(
-                  onPressed: pickBirthDate,
-                  child: const Text('Change'),
-                ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: bio,
-                maxLength: 1000,
-                maxLines: 4,
-                decoration: const InputDecoration(labelText: 'Bio'),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: city,
-                decoration: const InputDecoration(labelText: 'City'),
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: gender,
-                decoration: const InputDecoration(labelText: 'Gender'),
-                items: const ['WOMAN', 'MAN', 'NON_BINARY', 'OTHER']
-                    .map(
-                      (value) => DropdownMenuItem(
-                        value: value,
-                        child: Text(value.replaceAll('_', ' ')),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) setState(() => gender = value);
-                },
-              ),
-              const SizedBox(height: 20),
-              Text('Looking for', style: Theme.of(context).textTheme.titleMedium),
-              Wrap(
-                spacing: 8,
-                children: ['WOMAN', 'MAN', 'NON_BINARY', 'OTHER']
-                    .map(
-                      (value) => FilterChip(
-                        label: Text(value.replaceAll('_', ' ')),
-                        selected: showMe.contains(value),
-                        onSelected: (selected) => setState(
-                          () => selected ? showMe.add(value) : showMe.remove(value),
+                          ],
                         ),
-                      ),
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 20),
-              Text('Interests', style: Theme.of(context).textTheme.titleMedium),
-              interests.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: CircularProgressIndicator(),
+                        );
+                      },
+                    ),
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: uploading ? null : () => pickPhoto(0),
+                    icon: const Icon(Icons.add_a_photo),
+                    label: Text(uploading ? 'Uploading…' : 'Add a photo'),
+                  ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(
+                    labelText: 'Display name',
+                    hintText: 'Required — e.g. Alex',
+                  ),
                 ),
-                error: (_, _) => const Text('Could not load interests'),
-                data: (items) => Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: items
+                const SizedBox(height: 14),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Birthday'),
+                  subtitle: Text(
+                    birthDate.toLocal().toString().split(' ').first,
+                  ),
+                  trailing: TextButton(
+                    onPressed: pickBirthDate,
+                    child: const Text('Change'),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: bio,
+                  maxLength: 1000,
+                  maxLines: 4,
+                  decoration: const InputDecoration(labelText: 'Bio'),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: city,
+                  decoration: const InputDecoration(labelText: 'City'),
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: gender,
+                  decoration: const InputDecoration(labelText: 'Gender'),
+                  items: const ['WOMAN', 'MAN', 'NON_BINARY', 'OTHER']
                       .map(
-                        (item) => FilterChip(
-                          label: Text(_interestLabel(item)),
-                          selected: selectedInterests.contains(item['id'] as String?),
-                          onSelected: (selected) {
-                            final id = item['id'] as String?;
-                            if (id == null) return;
-                            setState(
-                              () => selected
-                                  ? selectedInterests.add(id)
-                                  : selectedInterests.remove(id),
-                            );
-                          },
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(value.replaceAll('_', ' ')),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => gender = value);
+                  },
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Looking for',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: ['WOMAN', 'MAN', 'NON_BINARY', 'OTHER']
+                      .map(
+                        (value) => FilterChip(
+                          label: Text(value.replaceAll('_', ' ')),
+                          selected: showMe.contains(value),
+                          onSelected: (selected) => setState(
+                            () => selected
+                                ? showMe.add(value)
+                                : showMe.remove(value),
+                          ),
                         ),
                       )
                       .toList(),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Text('Age range ${minAge.round()}–${maxAge.round()}'),
-              RangeSlider(
-                values: RangeValues(minAge, maxAge),
-                min: 18,
-                max: 99,
-                divisions: 81,
-                onChanged: (value) => setState(() {
-                  minAge = value.start;
-                  maxAge = value.end;
-                }),
-              ),
-              Text('Maximum distance ${distance.round()} km'),
-              Slider(
-                value: distance,
-                min: 1,
-                max: 200,
-                divisions: 199,
-                onChanged: (value) => setState(() => distance = value),
-              ),
-              FilledButton(
-                onPressed: saving
-                    ? null
-                    : () async {
-                        final displayName = name.text.trim();
-                        if (displayName.length < 2) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Enter a display name (at least 2 characters).'),
+                const SizedBox(height: 20),
+                Text(
+                  'Interests',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                interests.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: CircularProgressIndicator(),
+                  ),
+                  error: (_, _) => const Text('Could not load interests'),
+                  data: (items) => Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: items
+                        .map(
+                          (item) => FilterChip(
+                            label: Text(_interestLabel(item)),
+                            selected: selectedInterests.contains(
+                              item['id'] as String?,
                             ),
-                          );
-                          return;
-                        }
-                        if (showMe.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Select at least one gender preference.')),
-                          );
-                          return;
-                        }
-                        setState(() => saving = true);
-                        try {
-                          await ref.read(profileRepositoryProvider).save(
-                            UserProfile(
-                              displayName: displayName,
-                              birthDate: birthDate,
-                              gender: gender,
-                              showMe: showMe.toList(),
-                              bio: bio.text.trim().isEmpty ? null : bio.text.trim(),
-                              city: city.text.trim().isEmpty ? null : city.text.trim(),
-                              minAge: minAge.round(),
-                              maxAge: maxAge.round(),
-                              maxDistanceKm: distance.round(),
-                              discoverable: data?.discoverable ?? true,
-                              photos: data?.photos ?? [],
-                              interestIds: selectedInterests.toList(),
-                            ),
-                          );
-                          ref.invalidate(myProfileProvider);
-                          ref.invalidate(discoveryControllerProvider);
-                          if (context.mounted) {
+                            onSelected: (selected) {
+                              final id = item['id'] as String?;
+                              if (id == null) return;
+                              setState(
+                                () => selected
+                                    ? selectedInterests.add(id)
+                                    : selectedInterests.remove(id),
+                              );
+                            },
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text('Age range ${minAge.round()}–${maxAge.round()}'),
+                RangeSlider(
+                  values: RangeValues(minAge, maxAge),
+                  min: 18,
+                  max: 99,
+                  divisions: 81,
+                  onChanged: (value) => setState(() {
+                    minAge = value.start;
+                    maxAge = value.end;
+                  }),
+                ),
+                Text('Maximum distance ${distance.round()} km'),
+                Slider(
+                  value: distance,
+                  min: 1,
+                  max: 500,
+                  divisions: 499,
+                  onChanged: (value) => setState(() => distance = value),
+                ),
+                FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final displayName = name.text.trim();
+                          if (displayName.length < 2) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Profile saved!')),
+                              const SnackBar(
+                                content: Text(
+                                  'Enter a display name (at least 2 characters).',
+                                ),
+                              ),
                             );
-                            context.go('/profile');
+                            return;
                           }
-                        } catch (error) {
-                          if (context.mounted) {
+                          if (showMe.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Could not save profile: $error')),
+                              const SnackBar(
+                                content: Text(
+                                  'Select at least one gender preference.',
+                                ),
+                              ),
                             );
+                            return;
                           }
-                        } finally {
-                          if (mounted) setState(() => saving = false);
-                        }
-                      },
-                child: Text(saving ? 'Saving…' : 'Save profile'),
-              ),
-            ],
-          ),
+                          setState(() => saving = true);
+                          try {
+                            await ref
+                                .read(profileRepositoryProvider)
+                                .save(
+                                  UserProfile(
+                                    displayName: displayName,
+                                    birthDate: birthDate,
+                                    gender: gender,
+                                    showMe: showMe.toList(),
+                                    bio: bio.text.trim().isEmpty
+                                        ? null
+                                        : bio.text.trim(),
+                                    city: city.text.trim().isEmpty
+                                        ? null
+                                        : city.text.trim(),
+                                    minAge: minAge.round(),
+                                    maxAge: maxAge.round(),
+                                    maxDistanceKm: distance.round(),
+                                    discoverable: data?.discoverable ?? true,
+                                    photos: data?.photos ?? [],
+                                    interestIds: selectedInterests.toList(),
+                                  ),
+                                );
+                            ref.invalidate(myProfileProvider);
+                            ref.invalidate(discoveryControllerProvider);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Profile saved!')),
+                              );
+                              context.go('/profile');
+                            }
+                          } catch (error) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Could not save profile: $error',
+                                  ),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => saving = false);
+                          }
+                        },
+                  child: Text(saving ? 'Saving…' : 'Save profile'),
+                ),
+              ],
+            ),
           );
         },
       ),

@@ -125,6 +125,9 @@ model User {
   auditLogs            AuditLog[]           @relation("AuditActor")
   moderationCases      ModerationCase[]     @relation("ModeratedUser")
   moderationActions    ModerationCase[]     @relation("Moderator")
+  posts                Post[]
+  postLikes            PostLike[]
+  postComments         PostComment[]
 
   @@index([status, lastActiveAt])
 }
@@ -420,6 +423,51 @@ model AuditLog {
   actor       User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
   @@index([targetType, targetId])
   @@index([createdAt(sort: Desc)])
+}
+
+enum PostVisibility {
+  FRIENDS_ONLY
+  ONLY_ME
+}
+
+model Post {
+  id            String         @id @default(uuid()) @db.Uuid
+  authorId      String         @db.Uuid
+  body          String         @db.VarChar(4000)
+  mediaUrl      String?
+  mediaType     String?
+  visibility    PostVisibility @default(FRIENDS_ONLY)
+  allowComments Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes         PostLike[]
+  comments      PostComment[]
+
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+model PostLike {
+  postId    String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+}
+
+model PostComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @db.Uuid
+  authorId  String   @db.Uuid
+  body      String   @db.VarChar(2000)
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
 }
 
 model DailyMetric {

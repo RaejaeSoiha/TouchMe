@@ -19,7 +19,7 @@ export class AuthController {
   @Public() @Post('otp/verify') verifyOtp(@Body() dto: VerifyOtpDto, @Req() request: FastifyRequest) { return this.auth.verifyOtp(dto.phone, dto.code, this.context(request)); }
   @Public() @Post('email/verify') @HttpCode(HttpStatus.NO_CONTENT) verifyEmail(@Body() dto: VerifyEmailDto) { return this.auth.consumeVerification(dto.token, 'EMAIL_VERIFY'); }
   @Public() @Post('password/request') @HttpCode(HttpStatus.ACCEPTED) async requestReset(@Body() dto: PasswordResetRequestDto) {
-    await this.auth.requestPasswordReset(dto.email);
+    return this.auth.requestPasswordReset(dto.email);
   }
   @Public() @Post('password/reset') @HttpCode(HttpStatus.NO_CONTENT) resetPassword(@Body() dto: PasswordResetDto) { return this.auth.resetPassword(dto.token, dto.password); }
   @Public() @Post('social') social(@Body() dto: SocialLoginDto, @Req() request: FastifyRequest) { return this.auth.social(dto.provider, dto.identityToken, this.context(request)); }

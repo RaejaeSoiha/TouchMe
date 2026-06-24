@@ -84,15 +84,20 @@ export class AuthService {
     const normalized = phone.replace(/\s/g, '');
     const code = randomInt(100000, 1000000).toString();
     await this.redis.set(`otp:${normalized}`, await argon2.hash(code), 'EX', 300);
-    if (this.config.get('NODE_ENV') !== 'production') await this.redis.set(`otp-dev:${normalized}`, code, 'EX', 300);
+    if (this.config.get('NODE_ENV') !== 'production') {
+      await this.redis.set(`otp-dev:${normalized}`, code, 'EX', 300);
+    }
+    await this.communications.sendSms(normalized, `Your TouchMe verification code is ${code}`);
   }
 
-  async requestPasswordReset(emailInput: string): Promise<void> {
+  async requestPasswordReset(emailInput: string): Promise<{ devToken?: string }> {
     const email = emailInput.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) return;
+    if (!user) return {};
     const token = await this.issueVerification(user.id, 'PASSWORD_RESET');
     await this.communications.sendPasswordReset(email, token);
+    if (this.config.get('NODE_ENV') !== 'production') return { devToken: token };
+    return {};
   }
 
   async social(provider: 'google' | 'apple', identityToken: string, context: ClientContext): Promise<TokenPair> {

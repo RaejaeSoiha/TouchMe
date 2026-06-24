@@ -55,6 +55,11 @@ class PhotoRepository {
   Future<void> deletePhoto(String photoId) =>
       _dio.delete<void>('/profiles/me/photos/$photoId');
 
+  Future<void> reorderPhotos(List<String> photoIds) => _dio.patch<void>(
+    '/profiles/me/photos/order',
+    data: {'photoIds': photoIds},
+  );
+
   static String contentTypeForFilename(String? filename) {
     final lower = (filename ?? '').toLowerCase();
     if (lower.endsWith('.png')) return 'image/png';

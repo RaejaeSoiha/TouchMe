@@ -15,6 +15,31 @@ export class CommunicationsService {
   async sendEmailVerification(email: string, token: string): Promise<void> {
     await this.send(email, 'Verify your TouchMe email', `Use this one-time verification token in TouchMe: ${token}\n\nIt expires in 30 minutes.`);
   }
+
+  async sendSms(phone: string, message: string): Promise<void> {
+    const accountSid = this.config.get<string>('TWILIO_ACCOUNT_SID');
+    const authToken = this.config.get<string>('TWILIO_AUTH_TOKEN');
+    const from = this.config.get<string>('TWILIO_FROM_NUMBER');
+    if (!accountSid || !authToken || !from) {
+      if (this.config.get('NODE_ENV') === 'production') {
+        throw new ServiceUnavailableException('SMS provider unavailable');
+      }
+      return;
+    }
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ To: phone, From: from, Body: message }),
+      },
+    );
+    if (!response.ok) throw new ServiceUnavailableException('SMS delivery failed');
+  }
+
   private async send(to: string, subject: string, text: string): Promise<void> {
     if (!this.transporter) {
       if (this.config.get('NODE_ENV') === 'production') throw new ServiceUnavailableException('Email provider unavailable');

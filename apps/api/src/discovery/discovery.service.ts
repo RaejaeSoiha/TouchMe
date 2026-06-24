@@ -69,7 +69,13 @@ export class DiscoveryService {
           WHERE (b."blockerId" = ${userId}::uuid AND b."blockedId" = u.id)
              OR (b."blockerId" = u.id AND b."blockedId" = ${userId}::uuid)
         )
-      ORDER BY "distanceKm" ASC, u.id ASC
+      ORDER BY
+        EXISTS (
+          SELECT 1 FROM "Boost" b
+          WHERE b."userId" = u.id AND b."endsAt" > NOW()
+        ) DESC,
+        "distanceKm" ASC,
+        u.id ASC
       LIMIT ${limit + 1} OFFSET ${offset}
     `);
 

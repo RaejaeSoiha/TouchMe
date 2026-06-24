@@ -20,6 +20,14 @@ jobs:
           docker build -f apps/admin/Dockerfile -t "$ADMIN_REPOSITORY:${GITHUB_SHA}" .
           docker push "$API_REPOSITORY:${GITHUB_SHA}"
           docker push "$ADMIN_REPOSITORY:${GITHUB_SHA}"
+      - name: Run database migrations
+        env:
+          CLUSTER: "${{ vars.ECS_CLUSTER }}"
+          MIGRATE_TASK: "${{ vars.API_MIGRATE_TASK_DEFINITION }}"
+        run: |
+          if [ -n "$MIGRATE_TASK" ]; then
+            aws ecs run-task --cluster "$CLUSTER" --task-definition "$MIGRATE_TASK" --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[${{ vars.ECS_SUBNETS }}],securityGroups=[${{ vars.ECS_SECURITY_GROUP }}],assignPublicIp=DISABLED}" --query 'tasks[0].taskArn' --output text
+          fi
       - name: Register API task revision
         env: { CLUSTER: "${{ vars.ECS_CLUSTER }}", SERVICE: api, IMAGE: "${{ vars.API_ECR_REPOSITORY }}:${{ github.sha }}" }
         run: |
@@ -38,4 +46,3 @@ jobs:
           NEXT_ARN=$(aws ecs register-task-definition --cli-input-json file://next-task.json --query 'taskDefinition.taskDefinitionArn' --output text)
           aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$NEXT_ARN" >/dev/null
           aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
-

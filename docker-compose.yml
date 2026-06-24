@@ -24,22 +24,24 @@ services:
       REDIS_URL: redis://:nearby-local-redis@redis:6379
       S3_ENDPOINT: http://localstack:4566
       S3_BUCKET: touchme-media
-      S3_PRESIGN_ENDPOINT: http://localhost:4566
-      S3_PUBLIC_URL: http://localhost:4566
+      S3_PRESIGN_ENDPOINT: ${S3_PRESIGN_ENDPOINT:-http://localhost:4566}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:4566}
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-local-access-secret-local-access-secret-local-access-secret-local-access-secret}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-local-refresh-secret-local-refresh-secret-local-refresh-secret-local-refresh-secret}
-      APP_ORIGINS: http://localhost:3001,http://localhost:8080
+      APP_ORIGINS: ${APP_ORIGINS:-http://localhost:3001,http://localhost:8080}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@touchme.local}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-1212}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin121212!}
       SEED_DEMO_EMAIL: ${SEED_DEMO_EMAIL:-demo@touchme.local}
-      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-demo12121212!}
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-Demo121212!}
     depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy }, localstack: { condition: service_started } }
     ports: ["3000:3000"]
   admin:
     build: { context: ., dockerfile: apps/admin/Dockerfile }
-    environment: { API_INTERNAL_URL: http://api:3000/api/v1, NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1 }
+    environment:
+      API_INTERNAL_URL: http://api:3000/api/v1
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api/v1}
     depends_on: [api]
     ports: ["3001:3001"]
   nginx:

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/layout/responsive.dart';
+import '../../../core/safety/user_actions_sheet.dart';
 import '../data/safety_repository.dart';
 
 final blockedUsersProvider = FutureProvider<List<BlockedUser>>(
@@ -63,7 +64,7 @@ class SafetyScreen extends ConsumerWidget {
             leading: const Icon(Icons.policy_outlined),
             title: const Text('Community guidelines'),
             subtitle: const Text('Be respectful. Report harassment or fake profiles from chat.'),
-            onTap: () {},
+            onTap: () => showCommunityGuidelines(context),
           ),
           ListTile(
             leading: const Icon(Icons.delete_forever_outlined, color: Colors.red),

@@ -14,6 +14,7 @@ import { CommunicationsModule } from './communications/communications.module';
 import { validateEnvironment } from './config/env';
 import { DatabaseModule } from './database/database.module';
 import { DiscoveryModule } from './discovery/discovery.module';
+import { PostsModule } from './posts/posts.module';
 import { HealthModule } from './health/health.module';
 import { FriendsModule } from './friends/friends.module';
 import { MessagesModule } from './messages/messages.module';
@@ -31,7 +32,7 @@ import { UploadsModule } from './uploads/uploads.module';
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 120 }]),
-    DatabaseModule, RedisModule, PresenceModule, CommunicationsModule, AuthModule, ProfilesModule, DiscoveryModule,
+    DatabaseModule, RedisModule, PresenceModule, CommunicationsModule, AuthModule, ProfilesModule, DiscoveryModule, PostsModule,
     FriendsModule, MessagesModule, NotificationsModule, SafetyModule, UploadsModule,
     SubscriptionsModule, AnalyticsModule, AdminModule, HealthModule
   ],

@@ -34,10 +34,10 @@ cd apps\mobile
 
 | Role | Email | Password |
 |------|-------|----------|
-| **Admin** | `admin@touchme.local` | `1212` |
-| **Demo user** | `demo@touchme.local` | `demo12121212!` |
-| **Nearby user** | `alex@touchme.local` | `demo12121212!` |
-| **Nearby user** | `sam@touchme.local` | `demo12121212!` |
+| **Admin** | `admin@touchme.local` | `admin121212!` |
+| **Demo user** | `demo@touchme.local` | `Demo121212!` |
+| **Nearby user** | `alex@touchme.local` | `Demo121212!` |
+| **Nearby user** | `sam@touchme.local` | `Demo121212!` |
 
 Legacy accounts (`demo@nearbyconnect.local`, `raejae@nearbyconnect.local`) still work if already seeded.
 

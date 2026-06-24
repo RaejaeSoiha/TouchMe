@@ -29,6 +29,14 @@ export class FriendsController {
     return this.friends.rejectRequest(user.id, requestId);
   }
 
+  @Delete('requests/:requestId') cancel(@CurrentUser() user: AuthUser, @Param('requestId') requestId: string) {
+    return this.friends.cancelRequest(user.id, requestId);
+  }
+
+  @Delete('requests/user/:userId') cancelToUser(@CurrentUser() user: AuthUser, @Param('userId') userId: string) {
+    return this.friends.cancelOutgoing(user.id, userId);
+  }
+
   @Delete(':userId') remove(@CurrentUser() user: AuthUser, @Param('userId') userId: string) {
     return this.friends.removeFriend(user.id, userId);
   }

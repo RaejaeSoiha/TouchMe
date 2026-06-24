@@ -24,15 +24,23 @@ class _PassportScreenState extends ConsumerState<PassportScreen> {
   }
 
   Future<void> useCurrentLocation() async {
-    final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      await Geolocator.requestPermission();
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        await Geolocator.requestPermission();
+      }
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        latitude = position.latitude;
+        longitude = position.longitude;
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not get your location. Try again.')),
+        );
+      }
     }
-    final position = await Geolocator.getCurrentPosition();
-    setState(() {
-      latitude = position.latitude;
-      longitude = position.longitude;
-    });
   }
 
   @override
@@ -72,16 +80,27 @@ class _PassportScreenState extends ConsumerState<PassportScreen> {
                 ? null
                 : () async {
                     setState(() => saving = true);
-                    await ref.read(profileRepositoryProvider).passport(
-                      latitude!,
-                      longitude!,
-                    );
-                    setState(() => saving = false);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Explore location updated')),
+                    try {
+                      await ref.read(profileRepositoryProvider).passport(
+                        latitude!,
+                        longitude!,
                       );
-                      Navigator.pop(context);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Explore location updated')),
+                        );
+                        Navigator.pop(context);
+                      }
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not update location. Try again.'),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => saving = false);
                     }
                   },
             child: Text(saving ? 'Saving…' : 'Update location'),
